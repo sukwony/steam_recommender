@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../models/priority_settings.dart';
+import '../services/steam_auth_service.dart';
 import '../utils/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -12,25 +13,13 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late TextEditingController _steamIdController;
-  late TextEditingController _apiKeyController;
   late PrioritySettings _settings;
-  bool _showApiKey = false;
 
   @override
   void initState() {
     super.initState();
     final provider = context.read<GameProvider>();
     _settings = provider.settings.copyWith();
-    _steamIdController = TextEditingController(text: _settings.steamId ?? '');
-    _apiKeyController = TextEditingController(text: _settings.steamApiKey ?? '');
-  }
-
-  @override
-  void dispose() {
-    _steamIdController.dispose();
-    _apiKeyController.dispose();
-    super.dispose();
   }
 
   @override
@@ -83,54 +72,192 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSteamSection() {
+    final provider = context.read<GameProvider>();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Steam Configuration', icon: Icons.games),
+        _buildSectionHeader('Steam Authentication', icon: Icons.games),
         const SizedBox(height: 16),
-        TextField(
-          controller: _steamIdController,
-          style: const TextStyle(color: AppTheme.textPrimary),
-          decoration: const InputDecoration(
-            labelText: 'Steam ID (64-bit)',
-            hintText: '76561198xxxxxxxxx',
-            prefixIcon: Icon(Icons.person, color: AppTheme.textMuted),
-          ),
-          onChanged: (value) {
-            _settings = _settings.copyWith(steamId: value);
+        FutureBuilder<bool>(
+          future: provider.isAuthenticated(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+
+            final isAuthenticated = snapshot.data ?? false;
+
+            if (isAuthenticated) {
+              return _buildAuthenticatedView(provider);
+            } else {
+              return _buildSignInView(provider);
+            }
           },
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _apiKeyController,
-          style: const TextStyle(color: AppTheme.textPrimary),
-          obscureText: !_showApiKey,
-          decoration: InputDecoration(
-            labelText: 'Steam API Key',
-            hintText: 'Your API key',
-            prefixIcon: const Icon(Icons.key, color: AppTheme.textMuted),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _showApiKey ? Icons.visibility_off : Icons.visibility,
-                color: AppTheme.textMuted,
-              ),
-              onPressed: () => setState(() => _showApiKey = !_showApiKey),
-            ),
-          ),
-          onChanged: (value) {
-            _settings = _settings.copyWith(steamApiKey: value);
-          },
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Get your API key at: steamcommunity.com/dev/apikey',
-          style: TextStyle(
-            color: AppTheme.primaryColor.withValues(alpha: 0.8),
-            fontSize: 12,
-          ),
         ),
       ],
     );
+  }
+
+  Widget _buildAuthenticatedView(GameProvider provider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppTheme.primaryColor.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.check_circle,
+                color: AppTheme.primaryColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Steam Connected',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<String?>(
+            future: provider.getSteamId(),
+            builder: (context, snapshot) {
+              if (snapshot.hasData && snapshot.data != null) {
+                return Text(
+                  'Steam ID: ${snapshot.data}',
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 14,
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _handleSignOut(provider),
+              icon: const Icon(Icons.logout),
+              label: const Text('Disconnect'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.errorColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSignInView(GameProvider provider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppTheme.borderColor,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Sign in with your Steam account to sync your game library.',
+            style: TextStyle(
+              color: AppTheme.textMuted,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _handleSteamSignIn(provider),
+              icon: const Icon(Icons.login),
+              label: const Text('Sign in with Steam'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF171A21), // Steam dark color
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleSteamSignIn(GameProvider provider) async {
+    try {
+      final authService = SteamAuthService(provider.backendApi);
+      final steamId = await authService.authenticateWithSteam();
+
+      if (steamId != null && mounted) {
+        setState(() {}); // Refresh UI
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Steam account connected successfully!'),
+            backgroundColor: AppTheme.primaryColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sign in failed: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleSignOut(GameProvider provider) async {
+    try {
+      final authService = SteamAuthService(provider.backendApi);
+      await authService.signOut();
+
+      if (mounted) {
+        setState(() {}); // Refresh UI
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Steam account disconnected'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sign out failed: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildWeightsSection() {
@@ -386,10 +513,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _saveSettings() {
-    _settings = _settings.copyWith(
-      steamId: _steamIdController.text.trim(),
-      steamApiKey: _apiKeyController.text.trim(),
-    );
     _settings.normalizeWeights();
     
     context.read<GameProvider>().updateSettings(_settings);

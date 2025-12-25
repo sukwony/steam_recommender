@@ -31,7 +31,7 @@ class GameAdapter extends TypeAdapter<Game> {
       genres: (fields[11] as List).cast<String>(),
       isCompleted: fields[12] as bool,
       userProgress: fields[13] as double?,
-      addedAt: fields[14] as DateTime,
+      addedAt: fields[14] as DateTime?,
       lastSynced: fields[15] as DateTime?,
       isHidden: fields[16] as bool,
       notes: fields[17] as String?,

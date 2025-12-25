@@ -74,7 +74,7 @@ class GameDetailScreen extends StatelessWidget {
               Image.network(
                 game.headerImageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorBuilder: (_, _, _) => Container(
                   color: AppTheme.cardColor,
                   child: const Icon(Icons.videogame_asset, size: 64, color: AppTheme.textMuted),
                 ),

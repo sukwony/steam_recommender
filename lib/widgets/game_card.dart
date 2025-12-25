@@ -92,7 +92,7 @@ class GameCard extends StatelessWidget {
             ? Image.network(
                 game.headerImageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                errorBuilder: (_, _, _) => _buildPlaceholder(),
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
                   return _buildPlaceholder();

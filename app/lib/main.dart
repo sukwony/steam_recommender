@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => GameProvider(databaseService)..initialize(),
       child: MaterialApp(
-        title: 'Game Prioritizer',
+        title: 'WNTP',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
         home: const HomeScreen(),

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Flutter application called "Game Prioritizer" that helps users decide which Steam game to play next by calculating priority scores based on multiple factors. The app syncs with the Steam API and HowLongToBeat to fetch game data and applies weighted scoring algorithms.
+This is a Flutter application called "WNTP (What Next To Play)" that helps users decide which Steam game to play next by calculating priority scores based on multiple factors. The app syncs with the Steam API and HowLongToBeat to fetch game data and applies weighted scoring algorithms.
 
 ## Development Commands
 

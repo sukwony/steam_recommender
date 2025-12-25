@@ -1,5 +1,5 @@
-name: game_prioritizer
-description: "Steam library game prioritizer - helps you decide which game to play next"
+name: wntp
+description: "What Next To Play - Steam game priority helper"
 publish_to: 'none'
 version: 1.0.0+1
 

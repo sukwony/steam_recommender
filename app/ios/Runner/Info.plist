@@ -54,7 +54,7 @@
 			<string>com.wntp.auth</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>wntp</string>
+				<string>com.wntp</string>
 			</array>
 		</dict>
 	</array>

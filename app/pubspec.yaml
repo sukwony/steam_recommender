@@ -21,15 +21,11 @@ dependencies:
   # HTTP client for API calls
   http: ^1.6.0
   
-  # URL launcher
+  # URL launcher for opening browser
   url_launcher: ^6.3.2
 
-  # OAuth and secure storage
-  flutter_web_auth_2: ^4.0.1
+  # Secure storage for session tokens
   flutter_secure_storage: ^9.2.2
-
-  # Shared preferences for settings
-  shared_preferences: ^2.5.4
 
 dev_dependencies:
   flutter_test:

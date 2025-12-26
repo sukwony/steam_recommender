@@ -1,19 +1,35 @@
-import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'dart:async';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'backend_api_service.dart';
 
 /// Service for handling Steam OAuth authentication flow
-/// Uses flutter_web_auth_2 to open browser and handle callback
+/// Uses url_launcher to open browser and MethodChannel to handle callback
 class SteamAuthService {
   final BackendApiService _backendApi;
+  static const platform = MethodChannel('com.wntp/deep_link');
+  static Completer<String>? _authCompleter;
 
-  SteamAuthService(this._backendApi);
+  SteamAuthService(this._backendApi) {
+    // Set up deep link handler
+    platform.setMethodCallHandler(_handleMethodCall);
+  }
+
+  Future<dynamic> _handleMethodCall(MethodCall call) async {
+    if (call.method == 'onDeepLink') {
+      final String url = call.arguments as String;
+      if (_authCompleter != null && !_authCompleter!.isCompleted) {
+        _authCompleter!.complete(url);
+      }
+    }
+  }
 
   /// Authenticate user with Steam via backend OAuth flow
   ///
   /// Returns Steam ID on success, null on failure/cancellation
   Future<String?> authenticateWithSteam() async {
     try {
-      // Step 1: Build Steam OpenID authentication URL
+      // Build Steam OpenID authentication URL
       final backendUrl = _backendApi.baseUrl;
       final returnTo = Uri.encodeComponent('$backendUrl/api/auth/steam-callback');
       final realm = Uri.encodeComponent(backendUrl);
@@ -26,14 +42,25 @@ class SteamAuthService {
           '&openid.identity=http://specs.openid.net/auth/2.0/identifier_select'
           '&openid.claimed_id=http://specs.openid.net/auth/2.0/identifier_select';
 
-      // Step 2: Open browser for Steam authentication
-      // The backend will redirect to wntp://auth/success?token=xxx&steamId=yyy
-      final result = await FlutterWebAuth2.authenticate(
-        url: authUrl,
-        callbackUrlScheme: 'wntp',
+      // Create completer to wait for deep link callback
+      _authCompleter = Completer<String>();
+
+      // Open browser for Steam authentication
+      // The actual callback comes through MethodChannel
+      final uri = Uri.parse(authUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw Exception('Could not launch Steam login URL');
+      }
+
+      // Wait for MethodChannel callback with timeout
+      final result = await _authCompleter!.future.timeout(
+        const Duration(seconds: 60),
+        onTimeout: () => throw Exception('Authentication timeout'),
       );
 
-      // Step 3: Parse callback URL
+      // Parse callback URL
       final uri = Uri.parse(result);
       final token = uri.queryParameters['token'];
       final steamId = uri.queryParameters['steamId'];
@@ -42,17 +69,20 @@ class SteamAuthService {
         throw Exception('Invalid callback: missing token or steamId');
       }
 
-      // Step 4: Save session to secure storage
+      // Save session to secure storage
       await _backendApi.saveSession(token, steamId);
 
       return steamId;
     } catch (e) {
-      // User cancelled or other errors
-      if (e.toString().contains('CANCELED') || e.toString().contains('User cancelled')) {
+      _authCompleter = null;
+
+      // Timeout = user cancelled
+      if (e.toString().contains('timeout') || e.toString().contains('Authentication timeout')) {
         return null;
       }
-      // Other errors (network, backend, etc.)
       rethrow;
+    } finally {
+      _authCompleter = null;
     }
   }
 

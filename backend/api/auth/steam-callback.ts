@@ -27,6 +27,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Verify OpenID response
     const steamId = await verifyOpenIdResponse(openIdParams);
 
+    console.log('[steam-callback] Steam ID:', steamId);
+
     if (!steamId) {
       return res.status(401).send(`
         <html>
@@ -35,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             <p>Could not verify your Steam identity. Please try again.</p>
             <script>
               setTimeout(() => {
-                window.location.href = 'wntp://auth/error?message=verification_failed';
+                window.location.href = 'com.wntp://auth/error?message=verification_failed';
               }, 2000);
             </script>
           </body>
@@ -47,26 +49,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const token = createSessionToken(steamId);
 
     // Redirect to app with token
-    const redirectUrl = `wntp://auth/success?token=${encodeURIComponent(token)}&steamId=${steamId}`;
+    const redirectUrl = `com.wntp://auth/success?token=${encodeURIComponent(token)}&steamId=${steamId}`;
 
+    // Auto-redirect to app
     return res.status(200).send(`
+      <!DOCTYPE html>
       <html>
         <head>
-          <title>Authentication Successful</title>
-          <meta http-equiv="refresh" content="0;url=${redirectUrl}">
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Redirecting...</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; text-align: center; }
+            .success { color: green; }
+          </style>
         </head>
         <body>
-          <h1>Authentication Successful!</h1>
-          <p>Redirecting back to WNTP...</p>
-          <p>Steam ID: ${steamId}</p>
-          <script>
-            // Try immediate redirect
-            window.location.href = '${redirectUrl}';
+          <h1 class="success">✓ Authentication Successful!</h1>
+          <p>Redirecting to WNTP app...</p>
 
-            // Fallback: Show manual link if redirect doesn't work
-            setTimeout(() => {
-              document.body.innerHTML += '<p><a href="${redirectUrl}">Click here if you are not redirected automatically</a></p>';
-            }, 2000);
+          <script>
+            // Auto-redirect immediately
+            window.location.assign('${redirectUrl}');
           </script>
         </body>
       </html>
@@ -80,7 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           <p>An error occurred during authentication. Please try again.</p>
           <script>
             setTimeout(() => {
-              window.location.href = 'wntp://auth/error?message=server_error';
+              window.location.href = 'com.wntp://auth/error?message=server_error';
             }, 2000);
           </script>
         </body>

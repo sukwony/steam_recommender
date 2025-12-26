@@ -47,14 +47,6 @@ class PrioritySettings extends HiveObject {
   @HiveField(11)
   bool showHiddenGames;
 
-  // Steam ID for API calls
-  @HiveField(12)
-  String? steamId;
-
-  // Steam API Key
-  @HiveField(13)
-  String? steamApiKey;
-
   PrioritySettings({
     this.steamRatingWeight = 0.25,
     this.hltbTimeWeight = 0.25,
@@ -68,8 +60,6 @@ class PrioritySettings extends HiveObject {
     this.includeNoHltbGames = true,
     this.showCompletedGames = false,
     this.showHiddenGames = false,
-    this.steamId,
-    this.steamApiKey,
   });
 
   // Normalize weights to sum to 1.0
@@ -104,8 +94,6 @@ class PrioritySettings extends HiveObject {
     bool? includeNoHltbGames,
     bool? showCompletedGames,
     bool? showHiddenGames,
-    String? steamId,
-    String? steamApiKey,
   }) {
     return PrioritySettings(
       steamRatingWeight: steamRatingWeight ?? this.steamRatingWeight,
@@ -120,8 +108,6 @@ class PrioritySettings extends HiveObject {
       includeNoHltbGames: includeNoHltbGames ?? this.includeNoHltbGames,
       showCompletedGames: showCompletedGames ?? this.showCompletedGames,
       showHiddenGames: showHiddenGames ?? this.showHiddenGames,
-      steamId: steamId ?? this.steamId,
-      steamApiKey: steamApiKey ?? this.steamApiKey,
     );
   }
 }

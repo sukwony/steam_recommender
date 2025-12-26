@@ -9,8 +9,11 @@ class AppTheme {
   static const Color backgroundColor = Color(0xFF121212);
   static const Color surfaceColor = Color(0xFF1E1E1E);
   static const Color cardColor = Color(0xFF252525);
+  static const Color cardBackground = Color(0xFF252525); // Alias for cardColor
   static const Color cardHoverColor = Color(0xFF2D2D2D);
-  
+  static const Color borderColor = Color(0xFF404040);
+  static const Color errorColor = Colors.redAccent;
+
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xFFB0B0B0);
   static const Color textMuted = Color(0xFF757575);

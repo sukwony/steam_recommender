@@ -1,7 +1,6 @@
 import '../models/game.dart';
-import '../models/priority_settings.dart';
 import 'database_service.dart';
-import 'steam_api_service.dart';
+import 'backend_api_service.dart';
 import 'hltb_service.dart';
 
 enum SyncStatus {
@@ -37,25 +36,25 @@ class SyncProgress {
 
 class SyncService {
   final DatabaseService _database;
-  final SteamApiService _steamApi;
+  final BackendApiService _backendApi;
   final HltbService _hltbService;
 
-  SyncService(this._database)
-      : _steamApi = SteamApiService(),
-        _hltbService = HltbService();
+  SyncService(this._database, this._backendApi)
+      : _hltbService = HltbService();
 
   /// Full sync: fetch library and enrich with all data
-  Stream<SyncProgress> fullSync(PrioritySettings settings) async* {
-    if (settings.steamId == null || settings.steamApiKey == null) {
+  Stream<SyncProgress> fullSync() async* {
+    // Check authentication
+    if (!await _backendApi.isAuthenticated()) {
       yield SyncProgress(
         status: SyncStatus.error,
-        error: 'Steam ID and API Key are required',
+        error: 'Please sign in with Steam',
       );
       return;
     }
 
     try {
-      // Step 1: Fetch Steam library
+      // Step 1: Fetch Steam library from backend
       yield SyncProgress(
         status: SyncStatus.fetchingLibrary,
         message: 'Fetching Steam library...',
@@ -63,10 +62,8 @@ class SyncService {
 
       List<Game> games;
       try {
-        games = await _steamApi.fetchOwnedGames(
-          settings.steamId!,
-          settings.steamApiKey!,
-        );
+        final response = await _backendApi.fetchOwnedGames();
+        games = _parseGamesFromBackend(response);
       } catch (e) {
         yield SyncProgress(
           status: SyncStatus.error,
@@ -114,11 +111,11 @@ class SyncService {
 
       for (int i = 0; i < games.length; i++) {
         final game = games[i];
-        
+
         // Only enrich if missing data
         if (game.steamRating == 0 || game.genres.isEmpty) {
           try {
-            games[i] = await _steamApi.enrichGameData(game);
+            games[i] = await _enrichGameWithBackend(game);
           } catch (e) {
             // Continue on error for individual games
           }
@@ -145,7 +142,7 @@ class SyncService {
 
       for (int i = 0; i < games.length; i++) {
         final game = games[i];
-        
+
         // Only enrich if missing HLTB data
         if (game.hltbMainHours == null) {
           try {
@@ -189,11 +186,11 @@ class SyncService {
   }
 
   /// Quick sync: only update playtime and last played
-  Stream<SyncProgress> quickSync(PrioritySettings settings) async* {
-    if (settings.steamId == null || settings.steamApiKey == null) {
+  Stream<SyncProgress> quickSync() async* {
+    if (!await _backendApi.isAuthenticated()) {
       yield SyncProgress(
         status: SyncStatus.error,
-        error: 'Steam ID and API Key are required',
+        error: 'Please sign in with Steam',
       );
       return;
     }
@@ -204,10 +201,8 @@ class SyncService {
         message: 'Fetching playtime data...',
       );
 
-      final freshGames = await _steamApi.fetchOwnedGames(
-        settings.steamId!,
-        settings.steamApiKey!,
-      );
+      final response = await _backendApi.fetchOwnedGames();
+      final freshGames = _parseGamesFromBackend(response);
 
       final existingGames = _database.getAllGames();
       final updates = <Game>[];
@@ -283,6 +278,79 @@ class SyncService {
     yield SyncProgress(
       status: SyncStatus.completed,
       message: 'Updated HLTB for ${games.length} games',
+    );
+  }
+
+  /// Parse games from backend API response
+  List<Game> _parseGamesFromBackend(Map<String, dynamic> response) {
+    final gamesData = response['response']?['games'] as List<dynamic>?;
+    if (gamesData == null) return [];
+
+    return gamesData.map((gameJson) {
+      final appId = gameJson['appid'].toString();
+      final name = gameJson['name'] as String? ?? 'Unknown';
+      final playtimeMinutes = gameJson['playtime_forever'] as int? ?? 0;
+      final lastPlayedTimestamp = gameJson['rtime_last_played'] as int? ?? 0;
+
+      final headerImage = gameJson['img_icon_url'] != null
+          ? 'https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$appId/${gameJson['img_icon_url']}.jpg'
+          : null;
+
+      return Game(
+        id: appId,
+        name: name,
+        playtimeMinutes: playtimeMinutes,
+        lastPlayed: lastPlayedTimestamp > 0
+            ? DateTime.fromMillisecondsSinceEpoch(lastPlayedTimestamp * 1000)
+            : null,
+        headerImageUrl: headerImage,
+        lastSynced: DateTime.now(),
+      );
+    }).toList();
+  }
+
+  /// Enrich game with Steam data from backend
+  Future<Game> _enrichGameWithBackend(Game game) async {
+    final details = await _backendApi.fetchGameDetails(game.id);
+    final reviews = await _backendApi.fetchGameReviews(game.id);
+
+    double steamRating = game.steamRating;
+    int reviewCount = game.steamReviewCount;
+    double? metacritic = game.metacriticScore;
+    List<String> genres = game.genres;
+
+    // Parse reviews
+    if (reviews['success'] == 1) {
+      final summary = reviews['query_summary'];
+      final total = summary['total_reviews'] as int? ?? 0;
+      final positive = summary['total_positive'] as int? ?? 0;
+      if (total > 0) {
+        steamRating = (positive / total * 100);
+        reviewCount = total;
+      }
+    }
+
+    // Parse details
+    final gameData = details[game.id];
+    if (gameData != null && gameData['success'] == true) {
+      final data = gameData['data'];
+      if (data != null) {
+        if (data['metacritic'] != null) {
+          metacritic = (data['metacritic']['score'] as num?)?.toDouble();
+        }
+        if (data['genres'] != null) {
+          genres = (data['genres'] as List<dynamic>)
+              .map((g) => g['description'] as String)
+              .toList();
+        }
+      }
+    }
+
+    return game.copyWith(
+      steamRating: steamRating,
+      steamReviewCount: reviewCount,
+      metacriticScore: metacritic,
+      genres: genres,
     );
   }
 }

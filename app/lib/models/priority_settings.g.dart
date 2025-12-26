@@ -29,15 +29,13 @@ class PrioritySettingsAdapter extends TypeAdapter<PrioritySettings> {
       includeNoHltbGames: fields[9] as bool,
       showCompletedGames: fields[10] as bool,
       showHiddenGames: fields[11] as bool,
-      steamId: fields[12] as String?,
-      steamApiKey: fields[13] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, PrioritySettings obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.steamRatingWeight)
       ..writeByte(1)
@@ -61,11 +59,7 @@ class PrioritySettingsAdapter extends TypeAdapter<PrioritySettings> {
       ..writeByte(10)
       ..write(obj.showCompletedGames)
       ..writeByte(11)
-      ..write(obj.showHiddenGames)
-      ..writeByte(12)
-      ..write(obj.steamId)
-      ..writeByte(13)
-      ..write(obj.steamApiKey);
+      ..write(obj.showHiddenGames);
   }
 
   @override

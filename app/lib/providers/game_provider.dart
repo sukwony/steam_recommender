@@ -3,11 +3,13 @@ import '../models/game.dart';
 import '../models/priority_settings.dart';
 import '../models/game_with_priority.dart';
 import '../services/database_service.dart';
+import '../services/backend_api_service.dart';
 import '../services/priority_calculator.dart';
 import '../services/sync_service.dart';
 
 class GameProvider extends ChangeNotifier {
   final DatabaseService _database;
+  final BackendApiService _backendApi;
   late SyncService _syncService;
 
   List<Game> _games = [];
@@ -22,8 +24,8 @@ class GameProvider extends ChangeNotifier {
   List<String> _selectedGenres = [];
   PriorityTier? _selectedTier;
 
-  GameProvider(this._database) {
-    _syncService = SyncService(_database);
+  GameProvider(this._database, this._backendApi) {
+    _syncService = SyncService(_database, _backendApi);
   }
 
   // Getters
@@ -41,6 +43,7 @@ class GameProvider extends ChangeNotifier {
   List<String> get selectedGenres => _selectedGenres;
   PriorityTier? get selectedTier => _selectedTier;
   List<String> get allGenres => _database.getAllGenres();
+  BackendApiService get backendApi => _backendApi;
 
   /// Initialize provider
   Future<void> initialize() async {
@@ -130,17 +133,28 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Check if user is authenticated with Steam
+  Future<bool> isAuthenticated() async {
+    return await _backendApi.isAuthenticated();
+  }
+
+  /// Get current Steam ID
+  Future<String?> getSteamId() async {
+    return await _backendApi.getSteamId();
+  }
+
   /// Full sync from Steam
   Future<void> fullSync() async {
-    if (_settings.steamId == null || _settings.steamApiKey == null) {
-      _error = 'Please configure Steam ID and API Key in settings';
+    // Check authentication
+    if (!await _backendApi.isAuthenticated()) {
+      _error = 'Please sign in with Steam';
       notifyListeners();
       return;
     }
 
-    await for (final progress in _syncService.fullSync(_settings)) {
+    await for (final progress in _syncService.fullSync()) {
       _syncProgress = progress;
-      
+
       if (progress.status == SyncStatus.completed) {
         _games = _database.getAllGames();
         _recalculatePriorities();
@@ -148,7 +162,7 @@ class GameProvider extends ChangeNotifier {
       } else if (progress.status == SyncStatus.error) {
         _error = progress.error;
       }
-      
+
       notifyListeners();
     }
 
@@ -160,16 +174,22 @@ class GameProvider extends ChangeNotifier {
 
   /// Quick sync (playtime only)
   Future<void> quickSync() async {
-    await for (final progress in _syncService.quickSync(_settings)) {
+    if (!await _backendApi.isAuthenticated()) {
+      _error = 'Please sign in with Steam';
+      notifyListeners();
+      return;
+    }
+
+    await for (final progress in _syncService.quickSync()) {
       _syncProgress = progress;
-      
+
       if (progress.status == SyncStatus.completed) {
         _games = _database.getAllGames();
         _recalculatePriorities();
       } else if (progress.status == SyncStatus.error) {
         _error = progress.error;
       }
-      
+
       notifyListeners();
     }
 

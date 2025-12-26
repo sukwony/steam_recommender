@@ -1,33 +1,31 @@
 # WNTP Backend
 
-Backend API for What Next To Play - Steam OAuth proxy and API gateway.
+Vercel serverless backend for WNTP (What Next To Play) Flutter app.
+
+Handles Steam OAuth authentication and proxies authenticated Steam API calls.
 
 ## Features
 
 - **Steam OpenID 2.0 Authentication**: Secure user authentication via Steam
 - **JWT Session Management**: Stateless session tokens with 30-day expiry
-- **Steam API Proxy**: Secure proxy for Steam Web API calls
-  - GetOwnedGames (authenticated)
-  - App Details (public)
-  - App Reviews (public)
+- **Minimal API Surface**: Only 2 endpoints (authentication required APIs only)
+
+**Note:** Public Steam APIs (appdetails, appreviews) are called directly from Flutter client for better performance and lower costs.
 
 ## API Endpoints
 
 ### Authentication
 
-#### `GET /api/auth/steam-login`
-Returns Steam OpenID authentication URL.
-
-**Response:**
-```json
-{
-  "authUrl": "https://steamcommunity.com/openid/login?...",
-  "message": "Redirect user to this URL to authenticate with Steam"
-}
-```
-
 #### `GET /api/auth/steam-callback`
 Handles OpenID callback from Steam. Creates JWT session token and redirects to app.
+
+**Flow:**
+1. Flutter app opens Steam OpenID login URL (generated client-side)
+2. User authenticates with Steam
+3. Steam redirects to this endpoint with OpenID response
+4. Backend verifies OpenID response
+5. Backend creates JWT token
+6. Backend redirects to `wntp://auth/success?token=<jwt>&steamId=<id>`
 
 **Query Parameters:** OpenID response parameters from Steam
 
@@ -36,28 +34,12 @@ Handles OpenID callback from Steam. Creates JWT session token and redirects to a
 ### Games API
 
 #### `GET /api/games/owned`
-Get user's owned games from Steam.
+Proxies Steam `GetOwnedGames` API (requires authentication).
 
 **Headers:**
 - `Authorization: Bearer <jwt_token>`
 
-**Response:** Steam GetOwnedGames API response
-
-#### `GET /api/games/details?appId=<appId>`
-Get detailed game information.
-
-**Query Parameters:**
-- `appId` (required): Steam App ID
-
-**Response:** Steam appdetails API response
-
-#### `GET /api/games/reviews?appId=<appId>`
-Get game review statistics.
-
-**Query Parameters:**
-- `appId` (required): Steam App ID
-
-**Response:** Steam appreviews API response
+**Response:** Steam GetOwnedGames API response (user's game library with playtime)
 
 ## Setup
 
@@ -109,12 +91,9 @@ vercel --prod
 backend/
 ├── api/
 │   ├── auth/
-│   │   ├── steam-login.ts      # Generate Steam OpenID URL
-│   │   └── steam-callback.ts   # Handle OpenID callback
+│   │   └── steam-callback.ts   # Handle OpenID callback + JWT creation
 │   ├── games/
-│   │   ├── owned.ts            # Proxy GetOwnedGames
-│   │   ├── details.ts          # Proxy appdetails
-│   │   └── reviews.ts          # Proxy appreviews
+│   │   └── owned.ts            # Proxy GetOwnedGames (authenticated)
 │   └── utils/
 │       ├── session.ts          # JWT token management
 │       └── openid.ts           # OpenID 2.0 verification
@@ -122,6 +101,11 @@ backend/
 ├── tsconfig.json
 └── vercel.json                 # Vercel configuration
 ```
+
+**Why so minimal?**
+- Steam OpenID URL is generated client-side (standard format, never changes)
+- Public APIs (appdetails, appreviews) are called directly from Flutter (faster, cheaper)
+- Only authenticated APIs need backend proxy
 
 ## Security
 

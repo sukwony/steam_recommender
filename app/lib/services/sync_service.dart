@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/game.dart';
 import 'database_service.dart';
 import 'backend_api_service.dart';
@@ -140,16 +141,32 @@ class SyncService {
         message: 'Fetching completion times...',
       );
 
+      int hltbSuccessCount = 0;
+      int hltbFailCount = 0;
+
       for (int i = 0; i < games.length; i++) {
         final game = games[i];
 
         // Only enrich if missing HLTB data
         if (game.hltbMainHours == null) {
+          debugPrint('[SYNC] 🎮 Fetching HLTB for: ${game.name} (${i + 1}/${games.length})');
           try {
-            games[i] = await _hltbService.enrichWithHltbData(game);
+            final enriched = await _hltbService.enrichWithHltbData(game);
+            games[i] = enriched;
+
+            if (enriched.hltbMainHours != null) {
+              hltbSuccessCount++;
+              debugPrint('[SYNC] ✅ HLTB success: ${game.name} -> ${enriched.hltbMainHours}h');
+            } else {
+              hltbFailCount++;
+              debugPrint('[SYNC] ⚠️  HLTB no data found: ${game.name}');
+            }
           } catch (e) {
-            // Continue on error
+            hltbFailCount++;
+            debugPrint('[SYNC] ❌ HLTB error for ${game.name}: $e');
           }
+        } else {
+          debugPrint('[SYNC] ⏭️  Skipping ${game.name} - already has HLTB data (${game.hltbMainHours}h)');
         }
 
         yield SyncProgress(
@@ -159,9 +176,12 @@ class SyncService {
           message: 'Fetching HLTB: ${game.name}',
         );
 
-        // Rate limiting for HLTB
-        await Future.delayed(const Duration(milliseconds: 300));
+        // Rate limiting for HLTB WebView scraping (increased to avoid detection)
+        // 1.5-2.5s with random jitter to mimic human behavior
+        await Future.delayed(Duration(milliseconds: 1500 + (DateTime.now().millisecond % 1000)));
       }
+
+      debugPrint('[SYNC] 📊 HLTB Summary - Success: $hltbSuccessCount, Failed: $hltbFailCount, Total: ${games.length}');
 
       // Step 4: Save to database
       yield SyncProgress(
@@ -272,7 +292,8 @@ class SyncService {
         message: 'Fetching: ${game.name}',
       );
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Rate limiting for HLTB WebView scraping
+      await Future.delayed(Duration(milliseconds: 1500 + (DateTime.now().millisecond % 1000)));
     }
 
     yield SyncProgress(

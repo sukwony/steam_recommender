@@ -1,71 +1,26 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import '../models/game.dart';
+import '../models/hltb_game_data.dart';
+import 'hltb_webview_service.dart';
 
 class HltbService {
-  // HowLongToBeat doesn't have an official API, so we use web scraping approach
-  // For production, consider using a backend service or unofficial APIs
-  
-  static const String _searchUrl = 'https://howlongtobeat.com/api/search';
-  
-  /// Search for a game on HowLongToBeat
+  // HowLongToBeat scraping via hidden WebView
+  // Uses flutter_inappwebview to avoid bot detection by acting like a real browser
+
+  /// Search for a game on HowLongToBeat using WebView scraping
   Future<HltbGameData?> searchGame(String gameName) async {
     try {
       // Clean the game name for better search results
       final cleanName = _cleanGameName(gameName);
-      
-      final response = await http.post(
-        Uri.parse(_searchUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Referer': 'https://howlongtobeat.com',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        },
-        body: json.encode({
-          'searchType': 'games',
-          'searchTerms': cleanName.split(' '),
-          'searchPage': 1,
-          'size': 5,
-          'searchOptions': {
-            'games': {
-              'userId': 0,
-              'platform': '',
-              'sortCategory': 'popular',
-              'rangeCategory': 'main',
-              'rangeTime': {'min': 0, 'max': 0},
-              'gameplay': {'perspective': '', 'flow': '', 'genre': ''},
-              'modifier': '',
-            },
-            'users': {'sortCategory': 'postcount'},
-            'filter': '',
-            'sort': 0,
-            'randomizer': 0,
-          },
-        }),
-      );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final games = data['data'] as List<dynamic>? ?? [];
-        
-        if (games.isNotEmpty) {
-          // Find best match
-          final match = _findBestMatch(games, cleanName);
-          if (match != null) {
-            return HltbGameData(
-              id: match['game_id']?.toString() ?? '',
-              name: match['game_name'] ?? '',
-              mainHours: _parseHours(match['comp_main']),
-              mainExtraHours: _parseHours(match['comp_plus']),
-              completionistHours: _parseHours(match['comp_100']),
-              imageUrl: match['game_image'] != null 
-                  ? 'https://howlongtobeat.com/games/${match['game_image']}'
-                  : null,
-            );
-          }
-        }
+      // Use WebView service to search (avoids bot detection)
+      final result = await HltbWebViewService.instance.searchGame(cleanName);
+
+      if (result != null) {
+        debugPrint('[HLTB] ✅ "$gameName" → ${result.name}: ${result.mainHours ?? "-"}h / ${result.mainExtraHours ?? "-"}h / ${result.completionistHours ?? "-"}h');
       }
-      return null;
+
+      return result;
     } catch (e) {
       return null;
     }
@@ -81,36 +36,6 @@ class HltbService {
         .trim();
   }
 
-  /// Find the best matching game from search results
-  Map<String, dynamic>? _findBestMatch(List<dynamic> games, String searchName) {
-    final normalizedSearch = searchName.toLowerCase();
-    
-    // First try exact match
-    for (final game in games) {
-      final gameName = (game['game_name'] as String? ?? '').toLowerCase();
-      if (gameName == normalizedSearch) {
-        return game as Map<String, dynamic>;
-      }
-    }
-    
-    // Then try contains match
-    for (final game in games) {
-      final gameName = (game['game_name'] as String? ?? '').toLowerCase();
-      if (gameName.contains(normalizedSearch) || normalizedSearch.contains(gameName)) {
-        return game as Map<String, dynamic>;
-      }
-    }
-    
-    // Return first result if no better match
-    return games.isNotEmpty ? games.first as Map<String, dynamic> : null;
-  }
-
-  /// Parse hours from HLTB response (seconds to hours)
-  double? _parseHours(dynamic value) {
-    if (value == null || value == 0) return null;
-    // HLTB returns time in seconds
-    return (value as num).toDouble() / 3600;
-  }
 
   /// Enrich a game with HLTB data
   Future<Game> enrichWithHltbData(Game game) async {
@@ -149,28 +74,11 @@ class HltbService {
       
       onProgress?.call(i + 1, games.length);
       
-      // Rate limiting: wait between requests
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Rate limiting: wait between requests with jitter to avoid detection
+      // Increased from 500ms to 1.5-2.5s for WebView scraping
+      await Future.delayed(Duration(milliseconds: 1500 + (DateTime.now().millisecond % 1000)));
     }
     
     return enrichedGames;
   }
-}
-
-class HltbGameData {
-  final String id;
-  final String name;
-  final double? mainHours;
-  final double? mainExtraHours;
-  final double? completionistHours;
-  final String? imageUrl;
-
-  HltbGameData({
-    required this.id,
-    required this.name,
-    this.mainHours,
-    this.mainExtraHours,
-    this.completionistHours,
-    this.imageUrl,
-  });
 }

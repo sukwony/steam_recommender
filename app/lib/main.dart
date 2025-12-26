@@ -5,6 +5,7 @@ import 'services/backend_api_service.dart';
 import 'providers/game_provider.dart';
 import 'screens/home_screen.dart';
 import 'utils/app_theme.dart';
+import 'widgets/hltb_webview_container.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,7 +40,19 @@ class MyApp extends StatelessWidget {
         title: 'WNTP',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
-        home: const HomeScreen(),
+        home: Stack(
+          children: [
+            // Main app
+            const HomeScreen(),
+
+            // Hidden WebView for HLTB scraping (positioned offscreen)
+            const Positioned(
+              left: -1000,
+              top: -1000,
+              child: HltbWebViewContainer(),
+            ),
+          ],
+        ),
       ),
     );
   }

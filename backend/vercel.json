@@ -11,10 +11,5 @@
       "src": "/api/(.*)",
       "dest": "/api/$1"
     }
-  ],
-  "env": {
-    "STEAM_API_KEY": "@steam-api-key",
-    "JWT_SECRET": "@jwt-secret",
-    "APP_CALLBACK_SCHEME": "wntp://auth/success"
-  }
+  ]
 }

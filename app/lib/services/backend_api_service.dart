@@ -5,7 +5,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Service for communicating with WNTP backend API
 /// Handles authentication, session management, and API calls
 class BackendApiService {
-  // TODO: Update this URL after deploying to Vercel
   static const String _baseUrl = 'https://wntp-backend.vercel.app';
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(

@@ -46,11 +46,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Create JWT session token
     const token = createSessionToken(steamId);
 
-    // Get app callback scheme from environment
-    const callbackScheme = process.env.APP_CALLBACK_SCHEME || 'wntp://auth/success';
-
     // Redirect to app with token
-    const redirectUrl = `${callbackScheme}?token=${encodeURIComponent(token)}&steamId=${steamId}`;
+    const redirectUrl = `wntp://auth/success?token=${encodeURIComponent(token)}&steamId=${steamId}`;
 
     return res.status(200).send(`
       <html>

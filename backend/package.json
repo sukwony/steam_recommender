@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "description": "WNTP Backend - Steam OAuth proxy for What Next To Play app",
   "main": "index.js",
-  "scripts": {
-    "dev": "vercel dev",
-    "build": "tsc"
-  },
   "dependencies": {
     "jsonwebtoken": "^9.0.2"
   },

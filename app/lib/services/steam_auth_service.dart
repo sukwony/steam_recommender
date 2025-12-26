@@ -13,8 +13,18 @@ class SteamAuthService {
   /// Returns Steam ID on success, null on failure/cancellation
   Future<String?> authenticateWithSteam() async {
     try {
-      // Step 1: Get auth URL from backend
-      final authUrl = await _backendApi.getAuthUrl();
+      // Step 1: Build Steam OpenID authentication URL
+      final backendUrl = _backendApi.baseUrl;
+      final returnTo = Uri.encodeComponent('$backendUrl/api/auth/steam-callback');
+      final realm = Uri.encodeComponent(backendUrl);
+
+      final authUrl = 'https://steamcommunity.com/openid/login'
+          '?openid.ns=http://specs.openid.net/auth/2.0'
+          '&openid.mode=checkid_setup'
+          '&openid.return_to=$returnTo'
+          '&openid.realm=$realm'
+          '&openid.identity=http://specs.openid.net/auth/2.0/identifier_select'
+          '&openid.claimed_id=http://specs.openid.net/auth/2.0/identifier_select';
 
       // Step 2: Open browser for Steam authentication
       // The backend will redirect to wntp://auth/success?token=xxx&steamId=yyy

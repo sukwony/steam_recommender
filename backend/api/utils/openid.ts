@@ -3,34 +3,6 @@
  * Steam uses legacy OpenID 2.0, not OpenID Connect
  */
 
-const STEAM_OPENID_URL = 'https://steamcommunity.com/openid/login';
-
-export interface OpenIDParams {
-  'openid.ns': string;
-  'openid.mode': string;
-  'openid.return_to': string;
-  'openid.realm': string;
-  'openid.identity': string;
-  'openid.claimed_id': string;
-}
-
-/**
- * Build Steam OpenID authentication URL
- */
-export function buildAuthUrl(returnUrl: string, realm: string): string {
-  const params: OpenIDParams = {
-    'openid.ns': 'http://specs.openid.net/auth/2.0',
-    'openid.mode': 'checkid_setup',
-    'openid.return_to': returnUrl,
-    'openid.realm': realm,
-    'openid.identity': 'http://specs.openid.net/auth/2.0/identifier_select',
-    'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select'
-  };
-
-  const queryString = new URLSearchParams(params as any).toString();
-  return `${STEAM_OPENID_URL}?${queryString}`;
-}
-
 /**
  * Extract Steam ID from OpenID claimed_id
  * Format: https://steamcommunity.com/openid/id/<steam64_id>

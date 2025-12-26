@@ -15,23 +15,8 @@ class BackendApiService {
   static const String _tokenKey = 'jwt_token';
   static const String _steamIdKey = 'steam_id';
 
-  /// Get the Steam login authentication URL from backend
-  Future<String> getAuthUrl() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/api/auth/steam-login'),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['authUrl'] as String;
-      } else {
-        throw Exception('Failed to get auth URL: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error getting auth URL: $e');
-    }
-  }
+  /// Get the backend base URL
+  String get baseUrl => _baseUrl;
 
   /// Save session token and Steam ID to secure storage
   Future<void> saveSession(String token, String steamId) async {

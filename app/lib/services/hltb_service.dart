@@ -152,32 +152,4 @@ class HltbService {
       lastSynced: DateTime.now(),
     );
   }
-
-  /// Batch enrich multiple games (with rate limiting)
-  Future<List<Game>> enrichGamesWithHltb(
-    List<Game> games, {
-    void Function(int current, int total)? onProgress,
-  }) async {
-    final enrichedGames = <Game>[];
-    
-    for (int i = 0; i < games.length; i++) {
-      final game = games[i];
-      
-      // Skip if already has HLTB data
-      if (game.hltbMainHours != null) {
-        enrichedGames.add(game);
-        continue;
-      }
-      
-      final enriched = await enrichWithHltbData(game);
-      enrichedGames.add(enriched);
-      
-      onProgress?.call(i + 1, games.length);
-      
-      // Rate limiting: wait between requests
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-    
-    return enrichedGames;
-  }
 }

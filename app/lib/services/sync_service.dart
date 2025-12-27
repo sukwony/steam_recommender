@@ -179,8 +179,7 @@ class SyncService {
         );
 
         // Rate limiting for HLTB API calls
-        // 1.5-2.5s with random jitter to mimic human behavior
-        await Future.delayed(Duration(milliseconds: 1500 + (DateTime.now().millisecond % 1000)));
+        await Future.delayed(const Duration(milliseconds: 500));
       }
 
       debugPrint('[SYNC] 📊 HLTB Summary - Success: $hltbSuccessCount, Failed: $hltbFailCount, Total: ${games.length}');
@@ -305,7 +304,7 @@ class SyncService {
       );
 
       // Rate limiting for HLTB API calls
-      await Future.delayed(Duration(milliseconds: 1500 + (DateTime.now().millisecond % 1000)));
+      await Future.delayed(const Duration(milliseconds: 500));
     }
 
     yield SyncProgress(

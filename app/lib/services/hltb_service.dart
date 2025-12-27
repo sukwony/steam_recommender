@@ -174,9 +174,8 @@ class HltbService {
       
       onProgress?.call(i + 1, games.length);
       
-      // Rate limiting: wait between requests with jitter to avoid detection
-      // Increased from 500ms to 1.5-2.5s for WebView scraping
-      await Future.delayed(Duration(milliseconds: 1500 + (DateTime.now().millisecond % 1000)));
+      // Rate limiting: wait between requests
+      await Future.delayed(const Duration(milliseconds: 500));
     }
     
     return enrichedGames;

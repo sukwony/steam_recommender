@@ -68,15 +68,10 @@ class HltbHttpClient {
 
       // Build search request body (matching captured API format)
       // IMPORTANT: searchTerms must be an array of words, not a single string
-      // Also normalize the name: replace colons with spaces (HLTB uses spaces instead of colons)
-      final normalizedName = gameName
-          .replaceAll(':', ' ')  // "F.E.A.R.: Extraction" → "F.E.A.R. Extraction"
-          .replaceAll(RegExp(r'\s+'), ' ')  // Normalize multiple spaces
-          .trim();
-
+      // gameName is already cleaned by _cleanGameName() in hltb_service.dart
       final searchBody = {
         'searchType': 'games',
-        'searchTerms': normalizedName.split(' ').where((s) => s.isNotEmpty).toList(),
+        'searchTerms': gameName.split(' ').where((s) => s.isNotEmpty).toList(),
         'searchPage': 1,
         'size': 20,
         'searchOptions': {

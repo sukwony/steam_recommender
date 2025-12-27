@@ -70,12 +70,16 @@ class HltbService {
   }
 
   /// Clean game name for better search results
-  /// Only removes trademark symbols - keeps edition names for better exact matching
+  /// Converts Steam game names to HLTB-compatible format
+  /// Only removes special characters - keeps edition names for better exact matching
   String _cleanGameName(String name) {
     return name
         // Replace trademark symbols with space (not empty string!)
         // This prevents "COMBAT™7" from becoming "COMBAT7" instead of "COMBAT 7"
         .replaceAll(RegExp(r'™|®|©'), ' ')
+        // Replace colons with space (HLTB uses spaces instead of colons)
+        // "F.E.A.R.: Extraction" → "F.E.A.R. Extraction"
+        .replaceAll(':', ' ')
         // Normalize whitespace
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();

@@ -300,7 +300,7 @@ class SyncService {
       );
 
       // Rate limiting for HLTB API calls
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 200));
     }
 
     yield SyncProgress(
@@ -444,8 +444,8 @@ class SyncService {
         onProgress(i, game); // Already has HLTB data
       }
 
-      // Rate limiting (same as original: 500ms)
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Rate limiting
+      await Future.delayed(const Duration(milliseconds: 200));
     }
 
     debugPrint('[SYNC] 📊 HLTB Summary - Success: $hltbSuccessCount, Failed: $hltbFailCount, Total: ${games.length}');

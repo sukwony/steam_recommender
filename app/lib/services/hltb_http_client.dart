@@ -233,33 +233,39 @@ class HltbHttpClient {
   /// Parse search result item into HltbGameData
   HltbGameData? _parseSearchResult(Map<String, dynamic> item) {
     try {
-      final gameId = item['game_id']?.toString() ?? '';
-      final gameName = item['game_name']?.toString() ?? '';
-
-      if (gameId.isEmpty || gameName.isEmpty) {
-        return null;
-      }
-
-      // Parse times (in seconds)
-      final compMain = _parseTimeInSeconds(item['comp_main']);
-      final compPlus = _parseTimeInSeconds(item['comp_plus']);
-      final comp100 = _parseTimeInSeconds(item['comp_100']);
-
-      // Extract image URL
-      final gameImage = item['game_image']?.toString();
-
-      return HltbGameData(
-        id: gameId,
-        name: gameName,
-        mainHours: compMain,
-        mainExtraHours: compPlus,
-        completionistHours: comp100,
-        imageUrl: gameImage,
-      );
+      return _parseGameObject(item);
     } catch (e) {
       debugPrint('[HltbHttp] ❌ Parse search result error: $e');
       return null;
     }
+  }
+
+  /// Parse game object data into HltbGameData
+  /// Common parsing logic used by both search results and game detail pages
+  HltbGameData? _parseGameObject(Map<String, dynamic> gameObject) {
+    final gameId = gameObject['game_id']?.toString() ?? '';
+    final gameName = gameObject['game_name']?.toString() ?? '';
+
+    if (gameId.isEmpty || gameName.isEmpty) {
+      return null;
+    }
+
+    // Parse times (in seconds)
+    final compMain = _parseTimeInSeconds(gameObject['comp_main']);
+    final compPlus = _parseTimeInSeconds(gameObject['comp_plus']);
+    final comp100 = _parseTimeInSeconds(gameObject['comp_100']);
+
+    // Extract image URL
+    final gameImage = gameObject['game_image']?.toString();
+
+    return HltbGameData(
+      id: gameId,
+      name: gameName,
+      mainHours: compMain,
+      mainExtraHours: compPlus,
+      completionistHours: comp100,
+      imageUrl: gameImage,
+    );
   }
 
   /// Fetch game page HTML from https://howlongtobeat.com/game/{gameId}
@@ -358,30 +364,8 @@ class HltbHttpClient {
 
       final gameObject = gameArray[0] as Map<String, dynamic>;
 
-      // Extract game fields
-      final gameId = gameObject['game_id']?.toString() ?? '';
-      final gameName = gameObject['game_name']?.toString() ?? '';
-
-      if (gameId.isEmpty || gameName.isEmpty) return null;
-
-      // Parse completion times - times are in SECONDS, convert to hours
-      final compMain = _parseTimeInSeconds(gameObject['comp_main']);
-      final compPlus = _parseTimeInSeconds(gameObject['comp_plus']);
-      final comp100 = _parseTimeInSeconds(gameObject['comp_100']);
-
-      // Extract image URL
-      final gameImage = gameObject['game_image']?.toString();
-
-      final gameData = HltbGameData(
-        id: gameId,
-        name: gameName,
-        mainHours: compMain,
-        mainExtraHours: compPlus,
-        completionistHours: comp100,
-        imageUrl: gameImage,
-      );
-
-      return gameData;
+      // Use common parsing logic
+      return _parseGameObject(gameObject);
     } catch (e) {
       debugPrint('[HltbHttp] ❌ Parse error: $e');
       return null;

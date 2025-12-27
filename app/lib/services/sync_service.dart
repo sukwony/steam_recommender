@@ -160,9 +160,6 @@ class SyncService {
         );
       }
 
-      // Wait for completion to ensure everything is done
-      await Future.wait([steamFuture, hltbFuture]);
-
       debugPrint('[SYNC] ✅ Parallel enrichment completed - Steam: $steamCompleted, HLTB: $hltbCompleted');
 
       // Report final completion

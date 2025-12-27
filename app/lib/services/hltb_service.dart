@@ -24,7 +24,7 @@ class HltbService {
   /// - TimeoutException: Network timeout
   /// - SocketException: Network connection failed
   /// - HltbRetryableException: Auth expired or server error
-  Future<HltbGameData?> searchGame(String gameName) async {
+  Future<HltbGameData?> _searchGame(String gameName) async {
     // Clean the game name for better search results
     final cleanName = _cleanGameName(gameName);
 
@@ -126,9 +126,9 @@ class HltbService {
 
     // Tier 3: Name-based search fallback (exact match only)
     try {
-      final data = await searchGame(game.name);
+      final data = await _searchGame(game.name);
       if (data != null) {
-        // searchGame() already validates with _isGoodMatch() (exact match only)
+        // _searchGame() already validates with _isGoodMatch() (exact match only)
         // Store hltbId for future syncs
         return _applyHltbData(game, data).copyWith(hltbId: data.id);
       }

@@ -159,7 +159,7 @@ class HltbHttpClient {
         // Parse all results
         final results = <HltbGameData>[];
         for (final item in dataList) {
-          final gameData = _parseSearchResult(item as Map<String, dynamic>);
+          final gameData = _parseGameObject(item as Map<String, dynamic>);
           if (gameData != null) {
             results.add(gameData);
           }
@@ -226,16 +226,6 @@ class HltbHttpClient {
     } catch (e) {
       // Parsing errors - return null
       debugPrint('[HltbHttp] ❌ Error parsing game data: $e');
-      return null;
-    }
-  }
-
-  /// Parse search result item into HltbGameData
-  HltbGameData? _parseSearchResult(Map<String, dynamic> item) {
-    try {
-      return _parseGameObject(item);
-    } catch (e) {
-      debugPrint('[HltbHttp] ❌ Parse search result error: $e');
       return null;
     }
   }

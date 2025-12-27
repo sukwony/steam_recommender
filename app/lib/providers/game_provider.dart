@@ -52,6 +52,7 @@ class GameProvider extends ChangeNotifier {
 
     try {
       await _database.initialize();
+      await _syncService.initialize();
       _games = _database.getAllGames();
       _settings = _database.getSettings();
       _recalculatePriorities();

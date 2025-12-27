@@ -20,7 +20,7 @@ dependencies:
   
   # HTTP client for API calls
   http: ^1.6.0
-  
+
   # URL launcher for opening browser
   url_launcher: ^6.3.2
 

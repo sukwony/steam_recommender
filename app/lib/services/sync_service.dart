@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/game.dart';
 import 'database_service.dart';
 import 'backend_api_service.dart';
@@ -41,6 +42,11 @@ class SyncService {
 
   SyncService(this._database, this._backendApi)
       : _hltbService = HltbService();
+
+  /// Initialize HLTB service (must be called before first use)
+  Future<void> initialize() async {
+    await _hltbService.initialize();
+  }
 
   /// Full sync: fetch library and enrich with all data
   Stream<SyncProgress> fullSync() async* {
@@ -140,15 +146,28 @@ class SyncService {
         message: 'Fetching completion times...',
       );
 
+      int hltbSuccessCount = 0;
+      int hltbFailCount = 0;
+
       for (int i = 0; i < games.length; i++) {
         final game = games[i];
 
         // Only enrich if missing HLTB data
         if (game.hltbMainHours == null) {
           try {
-            games[i] = await _hltbService.enrichWithHltbData(game);
+            final enriched = await _hltbService.enrichWithHltbData(game);
+            games[i] = enriched;
+
+            if (enriched.hltbMainHours != null) {
+              hltbSuccessCount++;
+            } else {
+              hltbFailCount++;
+            }
           } catch (e) {
-            // Continue on error
+            // Network error or other exception - skip this game and retry next sync
+            // Game object remains unchanged (hltbId stays null for retry)
+            hltbFailCount++;
+            debugPrint('[SYNC] ❌ HLTB network error for ${game.name}: $e (will retry next sync)');
           }
         }
 
@@ -159,9 +178,11 @@ class SyncService {
           message: 'Fetching HLTB: ${game.name}',
         );
 
-        // Rate limiting for HLTB
-        await Future.delayed(const Duration(milliseconds: 300));
+        // Rate limiting for HLTB API calls
+        await Future.delayed(const Duration(milliseconds: 500));
       }
+
+      debugPrint('[SYNC] 📊 HLTB Summary - Success: $hltbSuccessCount, Failed: $hltbFailCount, Total: ${games.length}');
 
       // Step 4: Save to database
       yield SyncProgress(
@@ -240,9 +261,13 @@ class SyncService {
   }
 
   /// Refresh HLTB data for games missing it
+  /// Only fetches games that haven't been tried before (hltbId == null)
+  /// This prevents re-fetching games that:
+  /// - Exist in HLTB but have no time data (hltbId = valid ID)
+  /// - Were already attempted but not found (hltbId = "")
   Stream<SyncProgress> refreshHltb() async* {
     final games = _database.getAllGames()
-        .where((g) => g.hltbMainHours == null)
+        .where((g) => g.hltbMainHours == null && g.hltbId == null)
         .toList();
 
     if (games.isEmpty) {
@@ -262,8 +287,14 @@ class SyncService {
 
     for (int i = 0; i < games.length; i++) {
       final game = games[i];
-      final enriched = await _hltbService.enrichWithHltbData(game);
-      await _database.saveGame(enriched);
+
+      try {
+        final enriched = await _hltbService.enrichWithHltbData(game);
+        await _database.saveGame(enriched);
+      } catch (e) {
+        // Network error - skip this game and retry next sync
+        debugPrint('[SYNC] ❌ HLTB network error for ${game.name}: $e (will retry next sync)');
+      }
 
       yield SyncProgress(
         status: SyncStatus.enrichingHltb,
@@ -272,6 +303,7 @@ class SyncService {
         message: 'Fetching: ${game.name}',
       );
 
+      // Rate limiting for HLTB API calls
       await Future.delayed(const Duration(milliseconds: 500));
     }
 

@@ -35,13 +35,14 @@ class GameAdapter extends TypeAdapter<Game> {
       lastSynced: fields[15] as DateTime?,
       isHidden: fields[16] as bool,
       notes: fields[17] as String?,
+      hltbId: fields[18] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Game obj) {
     writer
-      ..writeByte(18)
+      ..writeByte(19)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -77,7 +78,9 @@ class GameAdapter extends TypeAdapter<Game> {
       ..writeByte(16)
       ..write(obj.isHidden)
       ..writeByte(17)
-      ..write(obj.notes);
+      ..write(obj.notes)
+      ..writeByte(18)
+      ..write(obj.hltbId);
   }
 
   @override

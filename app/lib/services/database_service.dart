@@ -1,6 +1,7 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/game.dart';
 import '../models/priority_settings.dart';
+import '../models/wikidata_mapping.dart';
 
 class DatabaseService {
   static const String _gamesBoxName = 'games';
@@ -23,6 +24,9 @@ class DatabaseService {
     }
     if (!Hive.isAdapterRegistered(1)) {
       Hive.registerAdapter(PrioritySettingsAdapter());
+    }
+    if (!Hive.isAdapterRegistered(2)) {
+      Hive.registerAdapter(WikidataMappingAdapter());
     }
 
     // Open boxes

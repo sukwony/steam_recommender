@@ -58,6 +58,9 @@ class Game extends HiveObject {
   @HiveField(17)
   String? notes;
 
+  @HiveField(18)
+  String? hltbId; // HLTB game ID for direct lookups
+
   Game({
     required this.id,
     required this.name,
@@ -77,6 +80,7 @@ class Game extends HiveObject {
     this.lastSynced,
     this.isHidden = false,
     this.notes,
+    this.hltbId,
   }) : addedAt = addedAt ?? DateTime.now();
 
   // Calculate days since last played
@@ -115,6 +119,7 @@ class Game extends HiveObject {
     DateTime? lastSynced,
     bool? isHidden,
     String? notes,
+    String? hltbId,
   }) {
     return Game(
       id: id ?? this.id,
@@ -135,6 +140,7 @@ class Game extends HiveObject {
       lastSynced: lastSynced ?? this.lastSynced,
       isHidden: isHidden ?? this.isHidden,
       notes: notes ?? this.notes,
+      hltbId: hltbId ?? this.hltbId,
     );
   }
 
@@ -157,6 +163,7 @@ class Game extends HiveObject {
     'lastSynced': lastSynced?.toIso8601String(),
     'isHidden': isHidden,
     'notes': notes,
+    'hltbId': hltbId,
   };
 
   factory Game.fromJson(Map<String, dynamic> json) => Game(
@@ -178,5 +185,6 @@ class Game extends HiveObject {
     lastSynced: json['lastSynced'] != null ? DateTime.parse(json['lastSynced'] as String) : null,
     isHidden: json['isHidden'] as bool? ?? false,
     notes: json['notes'] as String?,
+    hltbId: json['hltbId'] as String?,
   );
 }

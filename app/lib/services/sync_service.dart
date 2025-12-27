@@ -43,6 +43,11 @@ class SyncService {
   SyncService(this._database, this._backendApi)
       : _hltbService = HltbService();
 
+  /// Initialize HLTB service (must be called before first use)
+  Future<void> initialize() async {
+    await _hltbService.initialize();
+  }
+
   /// Full sync: fetch library and enrich with all data
   Stream<SyncProgress> fullSync() async* {
     // Check authentication
@@ -260,9 +265,13 @@ class SyncService {
   }
 
   /// Refresh HLTB data for games missing it
+  /// Only fetches games that haven't been tried before (hltbId == null)
+  /// This prevents re-fetching games that:
+  /// - Exist in HLTB but have no time data (hltbId = valid ID)
+  /// - Were already attempted but not found (hltbId = "")
   Stream<SyncProgress> refreshHltb() async* {
     final games = _database.getAllGames()
-        .where((g) => g.hltbMainHours == null)
+        .where((g) => g.hltbMainHours == null && g.hltbId == null)
         .toList();
 
     if (games.isEmpty) {

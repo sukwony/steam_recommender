@@ -19,30 +19,26 @@ class HltbService {
   }
 
   /// Search for a game on HowLongToBeat using direct API access
+  /// Throws TimeoutException or SocketException for network errors (caller should retry)
   Future<HltbGameData?> searchGame(String gameName) async {
-    try {
-      // Clean the game name for better search results
-      final cleanName = _cleanGameName(gameName);
+    // Clean the game name for better search results
+    final cleanName = _cleanGameName(gameName);
 
-      // Call search API directly
-      final results = await _httpClient.searchGames(cleanName);
+    // Call search API directly (may throw network exceptions)
+    final results = await _httpClient.searchGames(cleanName);
 
-      if (results.isEmpty) return null;
+    if (results.isEmpty) return null;
 
-      // Return first result (most relevant)
-      final firstResult = results.first;
+    // Return first result (most relevant)
+    final firstResult = results.first;
 
-      // Validate result matches search query (fuzzy matching)
-      if (!_isGoodMatch(cleanName, firstResult.name)) {
-        debugPrint('[HLTB] ⚠️ "$gameName" → Rejected mismatch: ${firstResult.name}');
-        return null;
-      }
-
-      return firstResult;
-    } catch (e) {
-      debugPrint('[HLTB] ❌ Search error: $e');
+    // Validate result matches search query (exact matching)
+    if (!_isGoodMatch(cleanName, firstResult.name)) {
+      debugPrint('[HLTB] ⚠️ "$gameName" → Rejected mismatch: ${firstResult.name}');
       return null;
     }
+
+    return firstResult;
   }
 
   /// Check if search result is a good match for the query
@@ -90,16 +86,21 @@ class HltbService {
   /// Tier 1: Use stored game.hltbId (fastest)
   /// Tier 2: Query Wikidata for Steam AppID → HLTB ID mapping (reliable)
   /// Tier 3: Fallback to name-based search with exact matching (accurate)
+  ///
+  /// Throws TimeoutException or SocketException for network errors (caller should retry)
   Future<Game> enrichWithHltbData(Game game) async {
     // Tier 1: Use stored HLTB ID (fastest path)
+    // May throw network exception - caller will retry
     if (game.hltbId != null && game.hltbId!.isNotEmpty) {
       final data = await _httpClient.fetchByGameId(game.hltbId!);
       if (data != null) {
         return _applyHltbData(game, data);
       }
+      // data is null = game not found or parsing error, try other tiers
     }
 
     // Tier 2: Wikidata mapping lookup
+    // May throw network exception - caller will retry
     try {
       final hltbId = await _wikidataService.getHltbId(game.id);
       if (hltbId != null && hltbId.isNotEmpty) {
@@ -109,17 +110,26 @@ class HltbService {
           return _applyHltbData(game, data).copyWith(hltbId: hltbId);
         }
       }
+      // hltbId is null = no mapping in Wikidata, continue to Tier 3
     } catch (e) {
-      debugPrint('[HLTB] ⚠️ Wikidata lookup error for ${game.id}: $e');
-      // Continue to Tier 3 fallback
+      // Network error or other exception - rethrow to abort and retry later
+      debugPrint('[HLTB] ❌ Wikidata network error for ${game.id}: $e');
+      rethrow;
     }
 
     // Tier 3: Name-based search fallback (exact match only)
-    final data = await searchGame(game.name);
-    if (data != null) {
-      // searchGame() already validates with _isGoodMatch() (exact match only)
-      // Store hltbId for future syncs
-      return _applyHltbData(game, data).copyWith(hltbId: data.id);
+    try {
+      final data = await searchGame(game.name);
+      if (data != null) {
+        // searchGame() already validates with _isGoodMatch() (exact match only)
+        // Store hltbId for future syncs
+        return _applyHltbData(game, data).copyWith(hltbId: data.id);
+      }
+      // data is null = no match found in name search, mark as not found
+    } catch (e) {
+      // Network error or other exception - rethrow to abort and retry later
+      debugPrint('[HLTB] ❌ Name search network error for "${game.name}": $e');
+      rethrow;
     }
 
     // Mark as attempted but not found (empty string) to avoid re-fetching

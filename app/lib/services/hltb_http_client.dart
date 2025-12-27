@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/hltb_game_data.dart';
@@ -139,9 +140,15 @@ class HltbHttpClient {
         return [];
       }
     } on TimeoutException {
+      // Network timeout - rethrow to retry later
       debugPrint('[HltbHttp] ❌ Search timeout');
-      return [];
+      rethrow;
+    } on SocketException {
+      // Network connection failed - rethrow to retry later
+      debugPrint('[HltbHttp] ❌ Network connection failed');
+      rethrow;
     } catch (e) {
+      // Other errors (auth, parsing) - return empty
       debugPrint('[HltbHttp] ❌ Search error: $e');
       return [];
     }
@@ -151,6 +158,7 @@ class HltbHttpClient {
   /// More reliable than search when ID is known (from Wikidata or previous search)
   ///
   /// Returns HltbGameData if successful, null if fetch/parse fails
+  /// Throws TimeoutException or SocketException for network errors (caller should retry)
   Future<HltbGameData?> fetchByGameId(String hltbId) async {
     try {
       final html = await fetchGamePage(hltbId);
@@ -161,8 +169,15 @@ class HltbHttpClient {
 
       final gameData = parseGameData(jsonData);
       return gameData;
+    } on TimeoutException {
+      // Network timeout - rethrow to retry later
+      rethrow;
+    } on SocketException {
+      // Network connection failed - rethrow to retry later
+      rethrow;
     } catch (e) {
-      debugPrint('[HltbHttp] ❌ Error fetching by ID $hltbId: $e');
+      // Parsing errors - return null
+      debugPrint('[HltbHttp] ❌ Error parsing game data: $e');
       return null;
     }
   }
@@ -228,13 +243,20 @@ class HltbHttpClient {
       if (response.statusCode == 200) {
         return response.body;
       } else {
+        // HTTP error (404, 500, etc.) - game not found or server error
         debugPrint('[HltbHttp] ❌ HTTP ${response.statusCode}: ${response.reasonPhrase}');
         return null;
       }
     } on TimeoutException {
+      // Network timeout - rethrow to retry later
       debugPrint('[HltbHttp] ❌ Timeout fetching game page');
-      return null;
+      rethrow;
+    } on SocketException {
+      // Network connection failed - rethrow to retry later
+      debugPrint('[HltbHttp] ❌ Network connection failed');
+      rethrow;
     } catch (e) {
+      // Other errors (parsing, etc.) - return null
       debugPrint('[HltbHttp] ❌ Error fetching page: $e');
       return null;
     }

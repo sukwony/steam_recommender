@@ -164,8 +164,10 @@ class SyncService {
               hltbFailCount++;
             }
           } catch (e) {
+            // Network error or other exception - skip this game and retry next sync
+            // Game object remains unchanged (hltbId stays null for retry)
             hltbFailCount++;
-            debugPrint('[SYNC] ❌ HLTB error for ${game.name}: $e');
+            debugPrint('[SYNC] ❌ HLTB network error for ${game.name}: $e (will retry next sync)');
           }
         }
 
@@ -286,8 +288,14 @@ class SyncService {
 
     for (int i = 0; i < games.length; i++) {
       final game = games[i];
-      final enriched = await _hltbService.enrichWithHltbData(game);
-      await _database.saveGame(enriched);
+
+      try {
+        final enriched = await _hltbService.enrichWithHltbData(game);
+        await _database.saveGame(enriched);
+      } catch (e) {
+        // Network error - skip this game and retry next sync
+        debugPrint('[SYNC] ❌ HLTB network error for ${game.name}: $e (will retry next sync)');
+      }
 
       yield SyncProgress(
         status: SyncStatus.enrichingHltb,
@@ -296,7 +304,7 @@ class SyncService {
         message: 'Fetching: ${game.name}',
       );
 
-      // Rate limiting for HLTB WebView scraping
+      // Rate limiting for HLTB API calls
       await Future.delayed(Duration(milliseconds: 1500 + (DateTime.now().millisecond % 1000)));
     }
 

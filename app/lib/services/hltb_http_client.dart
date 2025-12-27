@@ -209,13 +209,13 @@ class HltbHttpClient {
   /// - SocketException: Network connection failed
   Future<HltbGameData?> fetchByGameId(String hltbId) async {
     try {
-      final html = await fetchGamePage(hltbId);
+      final html = await _fetchGamePage(hltbId);
       if (html == null) return null;
 
-      final jsonData = extractJsonFromHtml(html);
+      final jsonData = _extractJsonFromHtml(html);
       if (jsonData == null) return null;
 
-      final gameData = parseGameData(jsonData);
+      final gameData = _parseGameData(jsonData);
       return gameData;
     } on TimeoutException {
       // Network timeout - rethrow to retry later
@@ -263,7 +263,7 @@ class HltbHttpClient {
   }
 
   /// Fetch game page HTML from https://howlongtobeat.com/game/{gameId}
-  Future<String?> fetchGamePage(String gameId) async {
+  Future<String?> _fetchGamePage(String gameId) async {
     if (gameId.isEmpty) return null;
 
     final url = 'https://howlongtobeat.com/game/$gameId';
@@ -312,7 +312,7 @@ class HltbHttpClient {
 
   /// Extract JSON from <script id="__NEXT_DATA__"> tag
   /// Next.js embeds page data as server-rendered JSON in this script tag
-  Map<String, dynamic>? extractJsonFromHtml(String html) {
+  Map<String, dynamic>? _extractJsonFromHtml(String html) {
     try {
       // Find <script id="__NEXT_DATA__" type="application/json">...</script>
       final regex = RegExp(
@@ -337,7 +337,7 @@ class HltbHttpClient {
 
   /// Parse HltbGameData from Next.js JSON structure
   /// Actual structure: {"props":{"pageProps":{"game":{"data":{"game":[{...}]}}}}}
-  HltbGameData? parseGameData(Map<String, dynamic> json) {
+  HltbGameData? _parseGameData(Map<String, dynamic> json) {
     try {
       // Navigate through Next.js structure: props → pageProps → game → data → game (array)
       final props = json['props'] as Map<String, dynamic>?;

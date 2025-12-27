@@ -54,11 +54,18 @@ class HltbHttpClient {
           _tokenExpiry = DateTime.now().add(const Duration(minutes: 5));
           return token;
         }
+        // HTTP 200 but no token - parsing issue
+        debugPrint('[HltbHttp] ❌ Auth token missing in response');
+        return null;
+      } else if (response.statusCode >= 500) {
+        // Server error - throw to retry later
+        debugPrint('[HltbHttp] ❌ Auth token server error: ${response.statusCode}');
+        throw HltbRetryableException('Auth token server error: ${response.statusCode}');
+      } else {
+        // Client error (4xx) - return null (not retryable)
+        debugPrint('[HltbHttp] ❌ Failed to get auth token: ${response.statusCode}');
+        return null;
       }
-
-      // HTTP error - return null (API issue, not retryable)
-      debugPrint('[HltbHttp] ❌ Failed to get auth token: ${response.statusCode}');
-      return null;
     } on TimeoutException {
       // Network timeout - rethrow to retry later
       debugPrint('[HltbHttp] ❌ Auth token timeout');
@@ -66,6 +73,9 @@ class HltbHttpClient {
     } on SocketException {
       // Network connection failed - rethrow to retry later
       debugPrint('[HltbHttp] ❌ Auth token network error');
+      rethrow;
+    } on HltbRetryableException {
+      // Server error - rethrow to retry later
       rethrow;
     } catch (e) {
       // Parsing errors - return null
